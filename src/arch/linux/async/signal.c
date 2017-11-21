@@ -163,6 +163,7 @@ static void sigalrm(struct sigcontext *, siginfo_t *);
 static void sigio(struct sigcontext *, siginfo_t *);
 static void sigasync(int sig, siginfo_t *si, void *uc);
 static void leavedos_sig(int sig);
+static void save_segment_bases(void);
 
 static void _newsetqsig(int sig, void (*fun)(int sig, siginfo_t *si, void *uc))
 {
@@ -424,6 +425,7 @@ void deinit_handler(struct sigcontext *scp, unsigned long *uc_flags)
 #endif
   }
 
+  save_segment_bases();
   if (_fs != getsegment(fs))
     loadregister(fs, _fs);
   if (_gs != getsegment(gs))
@@ -740,6 +742,24 @@ unk_err:
   }
 }
 
+
+#ifdef __x86_64__
+static void save_segment_bases(void)
+{
+  /* get long fs and gs bases. If they are in the first 32 bits
+     normal 386-style fs/gs switching can happen so we can ignore
+     fsbase/gsbase */
+  dosemu_arch_prctl(ARCH_GET_FS, &eflags_fs_gs.fsbase);
+  if (((unsigned long)eflags_fs_gs.fsbase <= 0xffffffff) && eflags_fs_gs.fs)
+    eflags_fs_gs.fsbase = 0;
+  dosemu_arch_prctl(ARCH_GET_GS, &eflags_fs_gs.gsbase);
+  if (((unsigned long)eflags_fs_gs.gsbase <= 0xffffffff) && eflags_fs_gs.gs)
+    eflags_fs_gs.gsbase = 0;
+  dbug_printf("initial segment bases: fs: %p  gs: %p\n",
+    eflags_fs_gs.fsbase, eflags_fs_gs.gsbase);
+}
+#endif
+
 /* DANG_BEGIN_FUNCTION signal_pre_init
  *
  * description:
@@ -763,17 +783,8 @@ signal_pre_init(void)
   eflags_fs_gs.ds = getsegment(ds);
   eflags_fs_gs.es = getsegment(es);
   eflags_fs_gs.ss = getsegment(ss);
-  /* get long fs and gs bases. If they are in the first 32 bits
-     normal 386-style fs/gs switching can happen so we can ignore
-     fsbase/gsbase */
-  dosemu_arch_prctl(ARCH_GET_FS, &eflags_fs_gs.fsbase);
-  if (((unsigned long)eflags_fs_gs.fsbase <= 0xffffffff) && eflags_fs_gs.fs)
-    eflags_fs_gs.fsbase = 0;
-  dosemu_arch_prctl(ARCH_GET_GS, &eflags_fs_gs.gsbase);
-  if (((unsigned long)eflags_fs_gs.gsbase <= 0xffffffff) && eflags_fs_gs.gs)
-    eflags_fs_gs.gsbase = 0;
-  dbug_printf("initial segment bases: fs: %p  gs: %p\n",
-    eflags_fs_gs.fsbase, eflags_fs_gs.gsbase);
+
+  save_segment_bases();
 #endif
 
   /* first set up the blocking mask: registersig() and newsetqsig()
