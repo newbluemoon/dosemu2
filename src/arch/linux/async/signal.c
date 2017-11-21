@@ -662,7 +662,7 @@ static void sigstack_init(void)
 #endif
 
   /* sigaltstack_wa is optional. See if we need it. */
-  stack_t dummy = { .ss_flags = SS_DISABLE | SS_AUTODISARM };
+  stack_t dummy = { .ss_size = 4096, .ss_flags = SS_DISABLE | SS_AUTODISARM };
   int err = sigaltstack(&dummy, NULL);
   int errno_save = errno;
 #if SIGALTSTACK_WA
@@ -1162,7 +1162,7 @@ void signal_switch_to_dpmi(void)
 static void signal_sas_wa(void)
 {
   int err;
-  stack_t ss = {};
+  stack_t ss = { .ss_size = 4096, };
   m_ucontext_t hack;
   unsigned char *sp;
   unsigned char *top = cstack + SIGSTACK_SIZE;
@@ -1213,7 +1213,7 @@ void signal_set_altstack(int on)
 
   if (!on) {
     stk.ss_sp = NULL;
-    stk.ss_size = 0;
+    stk.ss_size = 4096;
     stk.ss_flags = SS_DISABLE;
   } else {
     stk.ss_sp = cstack;
