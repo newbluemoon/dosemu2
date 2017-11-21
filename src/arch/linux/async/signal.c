@@ -332,10 +332,12 @@ static void __init_handler(struct sigcontext *scp, int async)
    * So if we set selector to 0, need to use also prctl(ARCH_SET_xS).
    * Also, if the bases are not used they are 0 so no need to restore,
    * which saves a syscall */
-  if (!eflags_fs_gs.fs && eflags_fs_gs.fsbase)
+//  if (!eflags_fs_gs.fs && eflags_fs_gs.fsbase)
     dosemu_arch_prctl(ARCH_SET_FS, eflags_fs_gs.fsbase);
-  if (!eflags_fs_gs.gs && eflags_fs_gs.gsbase)
+//  if (!eflags_fs_gs.gs && eflags_fs_gs.gsbase)
     dosemu_arch_prctl(ARCH_SET_GS, eflags_fs_gs.gsbase);
+  dbug_printf("set segment bases: fs: %p  gs: %p\n",
+    eflags_fs_gs.fsbase, eflags_fs_gs.gsbase);
 #endif
 }
 
@@ -746,6 +748,7 @@ unk_err:
 #ifdef __x86_64__
 static void save_segment_bases(void)
 {
+  u_short fs, gs;
   /* get long fs and gs bases. If they are in the first 32 bits
      normal 386-style fs/gs switching can happen so we can ignore
      fsbase/gsbase */
@@ -757,6 +760,9 @@ static void save_segment_bases(void)
     eflags_fs_gs.gsbase = 0;
   dbug_printf("initial segment bases: fs: %p  gs: %p\n",
     eflags_fs_gs.fsbase, eflags_fs_gs.gsbase);
+  fs = getsegment(fs);
+  gs = getsegment(gs);
+  dbug_printf("initial register values: fs: 0x%04x  gs: 0x%04x\n", fs, gs);
 }
 #endif
 
